@@ -15,15 +15,14 @@ func formatDuration(d time.Duration) string {
 	hours := (d - (days * day)) / time.Hour
 	minutes := (d - (days * day) - (hours * time.Hour)) / time.Minute
 
+	// Maybe days are redundant?
 	if days > 0 {
 		b.WriteString(fmt.Sprintf("%dd ", days))
 	}
-	if hours > 0 || (days == 0 && minutes == 0) {
+	if hours > 0 {
 		b.WriteString(fmt.Sprintf("%dh ", hours))
 	}
-	if minutes > 0 || hours == 0 {
-		b.WriteString(fmt.Sprintf("%dm", minutes))
-	}
+	b.WriteString(fmt.Sprintf("%dm", minutes))
 
 	return b.String()
 }

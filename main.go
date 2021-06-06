@@ -5,33 +5,46 @@ import (
 	"time"
 
 	"github.com/getlantern/systray"
-	"github.com/hako/durafmt"
 	"github.com/lextoumbourou/idle"
+	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 )
 
-const maxAllowedIdleTime time.Duration = time.Second * 10
+const maxAllowedIdleTime time.Duration = time.Minute * 3
 
 func main() {
-	systray.Run(onReady, onExit)
+	notifierInstance := notifier.GetInstance()
+
+	notifierCh := notifierInstance.Start()
+
+	go func() {
+		for activity := range notifierCh {
+			fmt.Println(activity.Type, time.Now())
+		}
+	}()
+
+	systray.Run(func() {
+		onSystrayReady()
+	}, func() {
+		notifierInstance.Quit()
+	})
 }
 
-func onReady() {
+func onSystrayReady() {
 	systray.SetTitle("0m")
-
-	mIdleTime := systray.AddMenuItem("Haven't been idle yet", "")
-	mIdleTime.Disable()
 
 	mOpenAtLogin := systray.AddMenuItemCheckbox("Open at Login", "", true)
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "")
 
-	go idleTimeListener(mIdleTime)
+	idleTimeCh := make(chan time.Duration)
+	// TODO: stop the listener when going to sleep
+	go idleTimeListener(idleTimeCh)
 
 	go func() {
 		for {
 			select {
 			case <-mQuit.ClickedCh:
-				handleQuit()
+				handleQuitClicked()
 			case <-mOpenAtLogin.ClickedCh:
 				handleOpenAtLoginClicked(mOpenAtLogin)
 			}
@@ -39,27 +52,42 @@ func onReady() {
 	}()
 }
 
-func idleTimeListener(mIdleTime *systray.MenuItem) {
+func idleTimeListener(idleTimeCh chan time.Duration) {
+	isIdle := false
+	lastIdleTime := time.Now()
+	lastActiveTime := time.Now()
+	_ = lastActiveTime
+
 	for range time.Tick(time.Second * 1) {
 		idleTime, err := idle.Get()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		} else {
-			mIdleTime.SetTitle(durafmt.Parse(idleTime).LimitFirstN(2).String())
+			// need to keep [lastIdleTime] to subtract it from [lastActiveTime] instead of [idleTime]
+			lastActiveTime = time.Now().Add(-idleTime)
 
 			if idleTime > maxAllowedIdleTime {
-				fmt.Println("is taking a break")
-				// TODO: handle going idle
+				lastIdleTime = time.Now()
+				isIdle = true
+			} else if isIdle {
+				// Reset
+				lastIdleTime = time.Now()
+				lastActiveTime = time.Now()
+				isIdle = false
+				// need to handle going to sleep
+
+				// TODO: add idleDuration to durations list
+				// IDEA: timer every hour check and delete old idle breaks
 			}
+
+			d := time.Since(lastIdleTime)
+			fmt.Println(d)
+			systray.SetTitle(formatDuration(d))
 		}
 	}
 }
 
-func onExit() {
-	fmt.Println("onExit()")
-}
-
-func handleQuit() {
+func handleQuitClicked() {
 	systray.Quit()
 }
 
