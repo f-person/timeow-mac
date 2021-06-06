@@ -7,9 +7,8 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/lextoumbourou/idle"
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
+	"github.com/sqweek/dialog"
 )
-
-const maxAllowedIdleTime time.Duration = time.Minute * 3
 
 func main() {
 	notifierInstance := notifier.GetInstance()
@@ -32,13 +31,14 @@ func main() {
 func onSystrayReady() {
 	systray.SetTitle("0m")
 
-	mOpenAtLogin := systray.AddMenuItemCheckbox("Open at Login", "", true)
-	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "")
 
 	idleTimeCh := make(chan time.Duration)
 	// TODO: stop the listener when going to sleep
 	go idleTimeListener(idleTimeCh)
+
+	mPreferences := systray.AddMenuItem("Preferences", "")
+	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Open at Login", "", true)
 
 	go func() {
 		for {
@@ -88,7 +88,11 @@ func idleTimeListener(idleTimeCh chan time.Duration) {
 }
 
 func handleQuitClicked() {
-	systray.Quit()
+	answer := dialog.Message("Are you sure you want to quit the app?").YesNo()
+	if answer {
+		systray.Quit()
+	}
+
 }
 
 func handleOpenAtLoginClicked(item *systray.MenuItem) {
