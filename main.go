@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/f-person/usage_time_menubar_app/pkg/startup"
 	"github.com/getlantern/systray"
 	"github.com/lextoumbourou/idle"
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
-	"github.com/sqweek/dialog"
 )
+
+var appStartup = startup.Startup{
+	AppLabel: appLabel,
+	AppName:  appName,
+}
 
 func main() {
 	notifierInstance := notifier.GetInstance()
@@ -38,7 +43,8 @@ func onSystrayReady() {
 	go idleTimeListener(idleTimeCh)
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
-	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Open at Login", "", true)
+
+	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", appStartup.RunningAtStartup())
 
 	go func() {
 		for {
@@ -88,17 +94,15 @@ func idleTimeListener(idleTimeCh chan time.Duration) {
 }
 
 func handleQuitClicked() {
-	answer := dialog.Message("Are you sure you want to quit the app?").YesNo()
-	if answer {
-		systray.Quit()
-	}
-
+	systray.Quit()
 }
 
 func handleOpenAtLoginClicked(item *systray.MenuItem) {
-	if item.Checked() {
+	if appStartup.RunningAtStartup() {
+		appStartup.RemoveStartupItem()
 		item.Uncheck()
 	} else {
+		appStartup.AddStartupItem()
 		item.Check()
 	}
 }
