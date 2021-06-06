@@ -1,7 +1,6 @@
 package startup
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/user"
@@ -85,7 +84,6 @@ func (s *Startup) AddStartupItem() {
 	}
 	defer f.Close()
 	s.launchdOnce.Do(func() {
-		fmt.Println("called once")
 		s.launchdTemplate = template.Must(template.New("launchdConfig").Parse(launchdString))
 	})
 	err = s.launchdTemplate.Execute(f,

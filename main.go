@@ -15,7 +15,13 @@ var appStartup = startup.Startup{
 	AppName:  appName,
 }
 
+var isIdle = false
+var lastIdleTime = time.Now()
+var lastActiveTime = time.Now()
+
 func main() {
+	_ = lastActiveTime // TODO: delete the line after using [lastActiveTime]
+
 	notifierInstance := notifier.GetInstance()
 
 	notifierCh := notifierInstance.Start()
@@ -36,15 +42,20 @@ func main() {
 func onSystrayReady() {
 	systray.SetTitle("0m")
 
-	mQuit := systray.AddMenuItem("Quit", "")
-
 	idleTimeCh := make(chan time.Duration)
 	// TODO: stop the listener when going to sleep
-	go idleTimeListener(idleTimeCh)
+
+	ticker := time.NewTicker(time.Second)
+	done := make(chan bool)
+
+	go idleTimeListener(ticker, done, idleTimeCh)
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
-
 	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", appStartup.RunningAtStartup())
+
+	systray.AddSeparator()
+
+	mQuit := systray.AddMenuItem("Quit", "")
 
 	go func() {
 		for {
@@ -58,37 +69,39 @@ func onSystrayReady() {
 	}()
 }
 
-func idleTimeListener(idleTimeCh chan time.Duration) {
-	isIdle := false
-	lastIdleTime := time.Now()
-	lastActiveTime := time.Now()
-	_ = lastActiveTime
+func idleTimeListener(ticker *time.Ticker, done chan bool, idleTimeCh chan time.Duration) {
+	for {
+		select {
+		case <-done:
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			idleTime, err := idle.Get()
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			} else {
+				// need to keep [lastIdleTime] to subtract it from [lastActiveTime] instead of [idleTime]
+				lastActiveTime = time.Now().Add(-idleTime)
 
-	for range time.Tick(time.Second * 1) {
-		idleTime, err := idle.Get()
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-		} else {
-			// need to keep [lastIdleTime] to subtract it from [lastActiveTime] instead of [idleTime]
-			lastActiveTime = time.Now().Add(-idleTime)
+				if idleTime > maxAllowedIdleTime {
+					lastIdleTime = time.Now()
+					isIdle = true
+				} else if isIdle {
+					// Reset
+					lastIdleTime = time.Now()
+					lastActiveTime = time.Now()
+					isIdle = false
+					// need to handle going to sleep
 
-			if idleTime > maxAllowedIdleTime {
-				lastIdleTime = time.Now()
-				isIdle = true
-			} else if isIdle {
-				// Reset
-				lastIdleTime = time.Now()
-				lastActiveTime = time.Now()
-				isIdle = false
-				// need to handle going to sleep
+					// TODO: add idleDuration to durations list
+					// IDEA: timer every hour check and delete old idle breaks
+				}
 
-				// TODO: add idleDuration to durations list
-				// IDEA: timer every hour check and delete old idle breaks
+				d := time.Since(lastIdleTime)
+				fmt.Println(d)
+				systray.SetTitle(formatDuration(d))
 			}
 
-			d := time.Since(lastIdleTime)
-			fmt.Println(d)
-			systray.SetTitle(formatDuration(d))
 		}
 	}
 }
