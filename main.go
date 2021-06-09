@@ -5,53 +5,77 @@ import (
 	"time"
 
 	"github.com/f-person/usage_time_menubar_app/pkg/startup"
+	"github.com/f-person/usage_time_menubar_app/pkg/userdefaults"
 	"github.com/getlantern/systray"
 	"github.com/lextoumbourou/idle"
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 )
 
-var appStartup = startup.Startup{
-	AppLabel: appLabel,
-	AppName:  appName,
+type app struct {
+	maxAllowedIdleTime time.Duration
+	startup            startup.Startup
+
+	defaults userdefaults.UserDefaults
+
+	isIdle         bool
+	isSleeping     bool
+	lastIdleTime   time.Time
+	lastActiveTime time.Time
+
+	notifier *notifier.Notifier
+	ticker   *time.Ticker
+
+	idleTimeCh chan time.Duration
+	notifierCh chan *notifier.Activity
 }
 
-var isIdle = false
-var lastIdleTime = time.Now()
-var lastActiveTime = time.Now()
-
 func main() {
-	_ = lastActiveTime // TODO: delete the line after using [lastActiveTime]
-
 	notifierInstance := notifier.GetInstance()
+	defaults := *userdefaults.Defaults()
+	app := app{
+		defaults: defaults,
+		startup: startup.Startup{
+			AppLabel: appLabel,
+			AppName:  appName,
+		},
 
-	notifierCh := notifierInstance.Start()
+		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 
-	go func() {
-		for activity := range notifierCh {
-			fmt.Println(activity.Type, time.Now())
-		}
-	}()
+		isIdle:         false,
+		isSleeping:     false,
+		lastIdleTime:   time.Now(),
+		lastActiveTime: time.Now(),
+		notifier:       notifierInstance,
+		ticker:         time.NewTicker(idleListenerInterval),
+
+		idleTimeCh: make(chan time.Duration),
+		notifierCh: notifierInstance.Start(),
+	}
+
+	// [maxAllowedIdleTime] have never been set before,
+	// use the default value and save it to user defaults.
+	if app.maxAllowedIdleTime == 0 {
+		app.maxAllowedIdleTime = defaultMaxAllowedIdleTime
+		defaults.SetInteger(maxAllowedIdleTimeKey, int(defaultMaxAllowedIdleTime.Minutes()))
+	}
+
+	app.notifierCh = app.notifier.Start()
+
+	go app.activityListener()
+	go app.idleTimeListener(app.ticker)
 
 	systray.Run(func() {
-		onSystrayReady()
+		app.onSystrayReady()
 	}, func() {
 		notifierInstance.Quit()
 	})
 }
 
-func onSystrayReady() {
+func (a *app) onSystrayReady() {
 	systray.SetTitle("0m")
 
-	idleTimeCh := make(chan time.Duration)
-	// TODO: stop the listener when going to sleep
-
-	ticker := time.NewTicker(time.Second)
-	done := make(chan bool)
-
-	go idleTimeListener(ticker, done, idleTimeCh)
-
 	mPreferences := systray.AddMenuItem("Preferences", "")
-	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", appStartup.RunningAtStartup())
+	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", a.startup.RunningAtStartup())
 
 	systray.AddSeparator()
 
@@ -61,61 +85,67 @@ func onSystrayReady() {
 		for {
 			select {
 			case <-mQuit.ClickedCh:
-				handleQuitClicked()
+				a.handleQuitClicked()
 			case <-mOpenAtLogin.ClickedCh:
-				handleOpenAtLoginClicked(mOpenAtLogin)
+				a.handleOpenAtLoginClicked(mOpenAtLogin)
 			}
 		}
 	}()
 }
 
-func idleTimeListener(ticker *time.Ticker, done chan bool, idleTimeCh chan time.Duration) {
-	for {
-		select {
-		case <-done:
-			ticker.Stop()
-			return
-		case <-ticker.C:
-			idleTime, err := idle.Get()
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			} else {
-				// need to keep [lastIdleTime] to subtract it from [lastActiveTime] instead of [idleTime]
-				lastActiveTime = time.Now().Add(-idleTime)
-
-				if idleTime > maxAllowedIdleTime {
-					lastIdleTime = time.Now()
-					isIdle = true
-				} else if isIdle {
-					// Reset
-					lastIdleTime = time.Now()
-					lastActiveTime = time.Now()
-					isIdle = false
-					// need to handle going to sleep
-
-					// TODO: add idleDuration to durations list
-					// IDEA: timer every hour check and delete old idle breaks
-				}
-
-				d := time.Since(lastIdleTime)
-				fmt.Println(d)
-				systray.SetTitle(formatDuration(d))
-			}
-
+func (a *app) activityListener() {
+	for activity := range a.notifierCh {
+		// TODO: update [a.lastActiveTime] and [a.lastIdleTime]
+		switch activity.Type {
+		case notifier.Sleep:
+			a.isSleeping = true
+		case notifier.Awake:
+			a.isSleeping = false
 		}
 	}
 }
 
-func handleQuitClicked() {
+func (a *app) idleTimeListener(ticker *time.Ticker) {
+	for range ticker.C {
+		if a.isSleeping {
+			continue
+		}
+
+		idleTime, err := idle.Get()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		} else {
+			a.lastActiveTime = time.Now().Add(-idleTime)
+
+			if idleTime > a.maxAllowedIdleTime {
+				a.lastIdleTime = time.Now()
+				a.isIdle = true
+			} else if a.isIdle {
+				// Reset
+				a.lastIdleTime = time.Now()
+				a.lastActiveTime = time.Now()
+				a.isIdle = false
+
+				// TODO: add idleDuration to durations list
+			}
+
+			d := time.Since(a.lastIdleTime)
+			fmt.Println(d)
+			systray.SetTitle(formatDuration(d))
+		}
+	}
+}
+
+func (a *app) handleQuitClicked() {
 	systray.Quit()
 }
 
-func handleOpenAtLoginClicked(item *systray.MenuItem) {
-	if appStartup.RunningAtStartup() {
-		appStartup.RemoveStartupItem()
+func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {
+	if a.startup.RunningAtStartup() {
+		a.startup.RemoveStartupItem()
 		item.Uncheck()
 	} else {
-		appStartup.AddStartupItem()
+		a.startup.AddStartupItem()
 		item.Check()
 	}
 }
