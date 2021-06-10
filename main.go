@@ -128,6 +128,14 @@ func getIdleTimeIndexFromDuration(d time.Duration) int {
 	return -1
 }
 
+func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) {
+	prevIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
+	mIdleTimes[prevIndex].Uncheck()
+	mIdleTimes[index].Check()
+
+	a.setMaxAllowedIdleTime(int(idleTimes[index]))
+}
+
 func (a *app) activityListener() {
 	for activity := range a.notifierCh {
 		// TODO: update [a.lastActiveTime] and [a.lastIdleTime]
@@ -169,14 +177,6 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 			systray.SetTitle(formatDuration(d))
 		}
 	}
-}
-
-func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) {
-	prevIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
-	mIdleTimes[prevIndex].Uncheck()
-	mIdleTimes[index].Check()
-
-	a.setMaxAllowedIdleTime(int(idleTimes[index]))
 }
 
 func (a *app) handleQuitClicked() {
