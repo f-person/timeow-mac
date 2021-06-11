@@ -71,11 +71,6 @@ func main() {
 	})
 }
 
-func (a *app) setMaxAllowedIdleTime(minutes int) {
-	a.maxAllowedIdleTime = time.Duration(minutes) * time.Minute
-	a.defaults.SetInteger(maxAllowedIdleTimeKey, minutes)
-}
-
 func (a *app) onSystrayReady() {
 	systray.SetTitle("0m")
 
@@ -115,25 +110,6 @@ func (a *app) onSystrayReady() {
 			}
 		}
 	}()
-}
-
-func getIdleTimeIndexFromDuration(d time.Duration) int {
-	minutes := uint8(d.Minutes())
-	for index, value := range idleTimes {
-		if value == minutes {
-			return index
-		}
-	}
-
-	return -1
-}
-
-func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) {
-	prevIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
-	mIdleTimes[prevIndex].Uncheck()
-	mIdleTimes[index].Check()
-
-	a.setMaxAllowedIdleTime(int(idleTimes[index]))
 }
 
 func (a *app) activityListener() {
@@ -176,19 +152,5 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 			fmt.Println(d)
 			systray.SetTitle(formatDuration(d))
 		}
-	}
-}
-
-func (a *app) handleQuitClicked() {
-	systray.Quit()
-}
-
-func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {
-	if a.startup.RunningAtStartup() {
-		a.startup.RemoveStartupItem()
-		item.Uncheck()
-	} else {
-		a.startup.AddStartupItem()
-		item.Check()
 	}
 }
