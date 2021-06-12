@@ -114,11 +114,16 @@ func (a *app) onSystrayReady() {
 
 func (a *app) activityListener() {
 	for activity := range a.notifierCh {
-		// TODO: update [a.lastActiveTime] and [a.lastIdleTime]
 		switch activity.Type {
 		case notifier.Sleep:
 			a.isSleeping = true
 		case notifier.Awake:
+			totalIdleTime := time.Since(a.lastActiveTime)
+
+			if totalIdleTime > a.maxAllowedIdleTime {
+				// TODO: add break to list
+				a.lastIdleTime = time.Now()
+			}
 			a.isSleeping = false
 		}
 	}
@@ -133,24 +138,25 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 		idleTime, err := idle.Get()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
-		} else {
-			a.lastActiveTime = time.Now().Add(-idleTime)
-
-			if idleTime > a.maxAllowedIdleTime {
-				a.lastIdleTime = time.Now()
-				a.isIdle = true
-			} else if a.isIdle {
-				// Reset
-				a.lastIdleTime = time.Now()
-				a.lastActiveTime = time.Now()
-				a.isIdle = false
-
-				// TODO: add idleDuration to durations list
-			}
-
-			d := time.Since(a.lastIdleTime)
-			fmt.Println(d)
-			systray.SetTitle(formatDuration(d))
+			continue
 		}
+
+		a.lastActiveTime = time.Now().Add(-idleTime)
+
+		if idleTime > a.maxAllowedIdleTime {
+			a.lastIdleTime = time.Now()
+			a.isIdle = true
+		} else if a.isIdle {
+			// Reset
+			a.lastIdleTime = time.Now()
+			a.lastActiveTime = time.Now()
+			a.isIdle = false
+
+			// TODO: add idleDuration to durations list
+		}
+
+		d := time.Since(a.lastIdleTime)
+		fmt.Println(d)
+		systray.SetTitle(formatDuration(d))
 	}
 }
