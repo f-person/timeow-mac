@@ -28,6 +28,10 @@ type app struct {
 
 	idleTimeCh chan time.Duration
 	notifierCh chan *notifier.Activity
+
+	breaks         []breakEntry
+	mBreaks        *systray.MenuItem
+	breakMenuItems []*systray.MenuItem
 }
 
 func main() {
@@ -40,7 +44,8 @@ func main() {
 			AppName:  appName,
 		},
 
-		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
+		// maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
+		maxAllowedIdleTime: time.Second * 2,
 
 		isIdle:         false,
 		isSleeping:     false,
@@ -73,6 +78,13 @@ func main() {
 
 func (a *app) onSystrayReady() {
 	systray.SetTitle("0m")
+
+	mBreaks := systray.AddMenuItem("Breaks", "")
+	mNoBreaks := mBreaks.AddSubMenuItem("No breaks yet", "")
+	mNoBreaks.Disable()
+
+	a.mBreaks = mBreaks
+	a.breakMenuItems = append(a.breakMenuItems, mNoBreaks)
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
 	mGoIdleAfter := mPreferences.AddSubMenuItem("Reset after inactivity for", "")
@@ -121,7 +133,7 @@ func (a *app) activityListener() {
 			totalIdleTime := time.Since(a.lastActiveTime)
 
 			if totalIdleTime > a.maxAllowedIdleTime {
-				// TODO: add break to list
+				a.addBreakEntry(a.lastActiveTime, time.Now())
 				a.lastIdleTime = time.Now()
 			}
 			a.isSleeping = false
@@ -141,22 +153,44 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 			continue
 		}
 
-		a.lastActiveTime = time.Now().Add(-idleTime)
-
 		if idleTime > a.maxAllowedIdleTime {
 			a.lastIdleTime = time.Now()
 			a.isIdle = true
 		} else if a.isIdle {
+			a.addBreakEntry(a.lastActiveTime, time.Now())
+
 			// Reset
 			a.lastIdleTime = time.Now()
 			a.lastActiveTime = time.Now()
 			a.isIdle = false
-
-			// TODO: add idleDuration to durations list
+		} else {
+			a.lastActiveTime = time.Now().Add(-idleTime)
 		}
 
 		d := time.Since(a.lastIdleTime)
 		fmt.Println(d)
 		systray.SetTitle(formatDuration(d))
+	}
+}
+
+func (a *app) addBreakEntry(start, end time.Time) {
+	entry := breakEntry{
+		start: start,
+		end:   end,
+	}
+
+	fmt.Printf("New break added: start = %v, end =%v , duration = %v.", entry.start, entry.end, entry.duration())
+
+	a.breaks = append(a.breaks, entry)
+
+	if len(a.breakMenuItems) == len(a.breaks)-1 {
+		item := a.mBreaks.AddSubMenuItem("", "")
+		item.Disable()
+		a.breakMenuItems = append(a.breakMenuItems, item)
+	}
+
+	length := len(a.breaks)
+	for index, entry := range a.breaks {
+		a.breakMenuItems[length-index-1].SetTitle(entry.string())
 	}
 }

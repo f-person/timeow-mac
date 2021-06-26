@@ -4,7 +4,9 @@ import "github.com/getlantern/systray"
 
 func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) {
 	prevIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
-	mIdleTimes[prevIndex].Uncheck()
+	if prevIndex > 0 && prevIndex < len(mIdleTimes) {
+		mIdleTimes[prevIndex].Uncheck()
+	}
 	mIdleTimes[index].Check()
 
 	a.setMaxAllowedIdleTime(int(idleTimes[index]))
