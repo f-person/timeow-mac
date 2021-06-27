@@ -44,8 +44,7 @@ func main() {
 			AppName:  appName,
 		},
 
-		// maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
-		maxAllowedIdleTime: time.Second * 2,
+		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 
 		isIdle:         false,
 		isSleeping:     false,

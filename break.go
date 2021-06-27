@@ -22,13 +22,18 @@ func (b *breakEntry) string() string {
 	if b.start.Day() == time.Now().Day() {
 		format = "15:04"
 	} else {
-		format = "Jan 1, 15:04"
+		format = "2 Jan 15:04"
+	}
+	duration := b.duration()
+	limit := 1
+	if duration > time.Hour {
+		limit = 2
 	}
 
 	return fmt.Sprintf(
 		"%s - %s (%s)",
 		b.start.Format(format),
 		b.end.Format(format),
-		durafmt.Parse(b.duration()).LimitFirstN(1).String(),
+		durafmt.Parse(duration).LimitFirstN(limit).String(),
 	)
 }
