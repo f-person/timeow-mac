@@ -12,13 +12,8 @@ type breakEntry struct {
 	end   time.Time
 }
 
-// Break times are converted to Unix and the difference in seconds is calculated
-// because time.Sub behaves strangely after the machine wakes up from sleep.
 func (b *breakEntry) duration() time.Duration {
-	startSeconds := b.start.Unix()
-	endSeconds := b.end.Local().Unix()
-
-	return time.Second * time.Duration(endSeconds-startSeconds)
+	return calculateDuration(b.start, b.end)
 }
 
 func (b *breakEntry) string() string {

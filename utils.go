@@ -1,6 +1,8 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 func getIdleTimeIndexFromDuration(d time.Duration) int {
 	minutes := uint8(d.Minutes())
@@ -16,4 +18,12 @@ func getIdleTimeIndexFromDuration(d time.Duration) int {
 func (a *app) setMaxAllowedIdleTime(minutes int) {
 	a.maxAllowedIdleTime = time.Duration(minutes) * time.Minute
 	a.defaults.SetInteger(maxAllowedIdleTimeKey, minutes)
+}
+
+// This function exists because time.Sub behaves strangely after the machine wakes up from sleep.
+func calculateDuration(start, end time.Time) time.Duration {
+	startSeconds := start.Unix()
+	endSeconds := end.Local().Unix()
+
+	return time.Second * time.Duration(endSeconds-startSeconds)
 }

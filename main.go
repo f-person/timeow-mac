@@ -63,8 +63,6 @@ func main() {
 		app.setMaxAllowedIdleTime(int(defaultMaxAllowedIdleTime))
 	}
 
-	app.notifierCh = app.notifier.Start()
-
 	go app.activityListener()
 	go app.idleTimeListener(app.ticker)
 
@@ -125,14 +123,21 @@ func (a *app) onSystrayReady() {
 
 func (a *app) activityListener() {
 	for activity := range a.notifierCh {
+		fmt.Printf("(%v) new event: %v\n", time.Now(), activity.Type)
 		switch activity.Type {
 		case notifier.Sleep:
+			fmt.Println("Sleeping")
 			a.isSleeping = true
 		case notifier.Awake:
-			totalIdleTime := time.Since(a.lastActiveTime)
+			now := time.Now()
+			totalIdleTime := calculateDuration(a.lastActiveTime, now)
+
+			fmt.Println("##########")
+			fmt.Printf("totalIdleTime = %v, now = %v, lastActiveTime = %v.\n", totalIdleTime, now, a.lastActiveTime)
+			fmt.Println("##########")
 
 			if totalIdleTime > a.maxAllowedIdleTime {
-				a.addBreakEntry(a.lastActiveTime, time.Now())
+				a.addBreakEntry(a.lastActiveTime, now)
 				a.lastIdleTime = time.Now()
 			}
 			a.isSleeping = false
@@ -178,9 +183,26 @@ func (a *app) addBreakEntry(start, end time.Time) {
 		end:   end,
 	}
 
-	fmt.Printf("New break added: start = %v, end =%v , duration = %v.", entry.start, entry.end, entry.duration())
+	// Avoid duplicate breaks.
+	length := len(a.breaks)
+	if length > 0 {
+		lastBreak := a.breaks[length-1]
+		if entry.start.Truncate(time.Minute) == lastBreak.start.Truncate(time.Minute) {
+			if entry.end.After(lastBreak.end) {
+				a.breaks[length-1] = entry
+			}
+		} else {
+			a.breaks = append(a.breaks, entry)
+		}
+	} else {
+		a.breaks = append(a.breaks, entry)
+	}
 
-	a.breaks = append(a.breaks, entry)
+	fmt.Println("----------")
+	fmt.Printf("New break added: start = %v, end =%v , duration = %v.\n", entry.start, entry.end, entry.duration())
+	fmt.Printf("string: %v\n", entry.string())
+	fmt.Println("current time:", time.Now())
+	fmt.Println("----------")
 
 	if len(a.breakMenuItems) == len(a.breaks)-1 {
 		item := a.mBreaks.AddSubMenuItem("", "")
@@ -188,7 +210,7 @@ func (a *app) addBreakEntry(start, end time.Time) {
 		a.breakMenuItems = append(a.breakMenuItems, item)
 	}
 
-	length := len(a.breaks)
+	length = len(a.breaks)
 	for index, entry := range a.breaks {
 		a.breakMenuItems[length-index-1].SetTitle(entry.string())
 	}
