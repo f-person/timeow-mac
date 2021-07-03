@@ -7,24 +7,24 @@ import (
 	"github.com/hako/durafmt"
 )
 
-type breakEntry struct {
+type period struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
 }
 
-func (b *breakEntry) duration() time.Duration {
-	return calculateDuration(b.Start, b.End)
+func (p *period) duration() time.Duration {
+	return calculateDuration(p.Start, p.End)
 }
 
-func (b *breakEntry) string() string {
+func (p *period) string() string {
 	var format string
 
-	if b.Start.Day() == time.Now().Day() {
+	if p.Start.Day() == time.Now().Day() {
 		format = "15:04"
 	} else {
 		format = "2 Jan 15:04"
 	}
-	duration := b.duration()
+	duration := p.duration()
 	limit := 1
 	if duration > time.Hour {
 		limit = 2
@@ -32,14 +32,14 @@ func (b *breakEntry) string() string {
 
 	return fmt.Sprintf(
 		"%s - %s (%s)",
-		b.Start.Format(format),
-		b.End.Format(format),
+		p.Start.Format(format),
+		p.End.Format(format),
 		durafmt.Parse(duration).LimitFirstN(limit).String(),
 	)
 }
 
 func (a *app) addBreakEntry(start, end time.Time) {
-	entry := breakEntry{
+	entry := period{
 		Start: start,
 		End:   end,
 	}
@@ -83,8 +83,8 @@ func (a *app) updateBreakMenuItems() {
 	}
 }
 
-func (a *app) readBreaksFromStorage() ([]breakEntry, error) {
-	var breaks []breakEntry
+func (a *app) readBreaksFromStorage() ([]period, error) {
+	var breaks []period
 	err := a.defaults.Unmarshal(breaksKey, &breaks)
 
 	return breaks, err

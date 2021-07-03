@@ -29,7 +29,7 @@ type app struct {
 	idleTimeCh chan time.Duration
 	notifierCh chan *notifier.Activity
 
-	breaks         []breakEntry
+	breaks         []period
 	mBreaks        *systray.MenuItem
 	breakMenuItems []*systray.MenuItem
 }

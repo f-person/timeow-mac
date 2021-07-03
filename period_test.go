@@ -29,7 +29,7 @@ func TestString(t *testing.T) {
 	for _, tt := range tests {
 		testname := fmt.Sprintf("%v, %v", tt.start, tt.end)
 		t.Run(testname, func(t *testing.T) {
-			entry := breakEntry{tt.start, tt.end}
+			entry := period{tt.start, tt.end}
 			answer := entry.string()
 			if answer != tt.want {
 				t.Fatalf("got %v, want %v", answer, tt.want)
