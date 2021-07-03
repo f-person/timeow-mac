@@ -63,6 +63,13 @@ func main() {
 		app.setMaxAllowedIdleTime(int(defaultMaxAllowedIdleTime))
 	}
 
+	breaks, err := app.readBreaksFromStorage()
+	if err == nil {
+		app.breaks = breaks
+	} else {
+		fmt.Printf("An error occurred while reading breaks: %v", err)
+	}
+
 	go app.activityListener()
 	go app.idleTimeListener(app.ticker)
 
@@ -82,6 +89,10 @@ func (a *app) onSystrayReady() {
 
 	a.mBreaks = mBreaks
 	a.breakMenuItems = append(a.breakMenuItems, mNoBreaks)
+
+	if len(a.breaks) > 0 {
+		a.updateBreakMenuItems()
+	}
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
 	mGoIdleAfter := mPreferences.AddSubMenuItem("Reset after inactivity for", "")
