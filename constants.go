@@ -10,5 +10,6 @@ const defaultMaxAllowedIdleTime time.Duration = time.Minute * 3
 // User Default keys
 const maxAllowedIdleTimeKey = "maxAllowedIdleTime"
 const breaksKey = "breaks"
+const activePeriodsKey = "activePeriods"
 
 var idleTimes = [...]uint8{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}

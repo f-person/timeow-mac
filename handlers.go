@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/getlantern/systray"
 )
 
@@ -25,5 +27,7 @@ func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {
 }
 
 func (a *app) handleQuitClicked() {
+	a.addActivePeriodEntry(a.lastIdleTime, time.Now())
+
 	systray.Quit()
 }

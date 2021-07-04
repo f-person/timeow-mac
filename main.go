@@ -18,10 +18,11 @@ type app struct {
 
 	defaults userdefaults.UserDefaults
 
-	isIdle         bool
-	isSleeping     bool
-	lastIdleTime   time.Time
-	lastActiveTime time.Time
+	isIdle           bool
+	isSleeping       bool
+	sleepingSince    time.Time
+	lastIdleTime     time.Time
+	lastActivePeriod time.Time
 
 	notifier *notifier.Notifier
 	ticker   *time.Ticker
@@ -32,6 +33,10 @@ type app struct {
 	breaks         []period
 	mBreaks        *systray.MenuItem
 	breakMenuItems []*systray.MenuItem
+
+	activePeriods         []period
+	mActivePeriods        *systray.MenuItem
+	activePeriodMenuItems []*systray.MenuItem
 }
 
 func main() {
@@ -46,12 +51,12 @@ func main() {
 
 		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 
-		isIdle:         false,
-		isSleeping:     false,
-		lastIdleTime:   time.Now(),
-		lastActiveTime: time.Now(),
-		notifier:       notifierInstance,
-		ticker:         time.NewTicker(idleListenerInterval),
+		isIdle:           false,
+		isSleeping:       false,
+		lastIdleTime:     time.Now(),
+		lastActivePeriod: time.Now(),
+		notifier:         notifierInstance,
+		ticker:           time.NewTicker(idleListenerInterval),
 
 		idleTimeCh: make(chan time.Duration),
 		notifierCh: notifierInstance.Start(),
@@ -63,11 +68,18 @@ func main() {
 		app.setMaxAllowedIdleTime(int(defaultMaxAllowedIdleTime))
 	}
 
-	breaks, err := app.readBreaksFromStorage()
+	breaks, err := app.readPeriodsFromStorage(breaksKey)
 	if err == nil {
 		app.breaks = breaks
 	} else {
 		fmt.Printf("An error occurred while reading breaks: %v", err)
+	}
+
+	activePeriods, err := app.readPeriodsFromStorage(activePeriodsKey)
+	if err == nil {
+		app.activePeriods = activePeriods
+	} else {
+		fmt.Printf("An error occurred while reading active times: %v", err)
 	}
 
 	go app.activityListener()
@@ -83,15 +95,26 @@ func main() {
 func (a *app) onSystrayReady() {
 	systray.SetTitle("0m")
 
+	// Setup break entries
 	mBreaks := systray.AddMenuItem("Breaks", "")
 	mNoBreaks := mBreaks.AddSubMenuItem("No breaks yet", "")
 	mNoBreaks.Disable()
 
 	a.mBreaks = mBreaks
 	a.breakMenuItems = append(a.breakMenuItems, mNoBreaks)
-
 	if len(a.breaks) > 0 {
 		a.updateBreakMenuItems()
+	}
+
+	// Setup active time entries
+	mActivePeriods := systray.AddMenuItem("Active periods", "")
+	mNoActivePeriods := mActivePeriods.AddSubMenuItem("No active periods yet", "")
+	mNoActivePeriods.Disable()
+
+	a.mActivePeriods = mActivePeriods
+	a.activePeriodMenuItems = append(a.activePeriodMenuItems, mNoActivePeriods)
+	if len(a.activePeriods) > 0 {
+		a.updateActivePeriodMenuItems()
 	}
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
@@ -139,16 +162,17 @@ func (a *app) activityListener() {
 		case notifier.Sleep:
 			fmt.Println("Sleeping")
 			a.isSleeping = true
+			a.sleepingSince = time.Now()
 		case notifier.Awake:
 			now := time.Now()
-			totalIdleTime := calculateDuration(a.lastActiveTime, now)
+			totalIdleTime := calculateDuration(a.lastActivePeriod, now)
 
 			fmt.Println("##########")
-			fmt.Printf("totalIdleTime = %v, now = %v, lastActiveTime = %v.\n", totalIdleTime, now, a.lastActiveTime)
+			fmt.Printf("totalIdleTime = %v, now = %v, lastActivePeriod = %v.\n", totalIdleTime, now, a.lastActivePeriod)
 			fmt.Println("##########")
 
 			if totalIdleTime > a.maxAllowedIdleTime {
-				a.addBreakEntry(a.lastActiveTime, now)
+				a.addBreakEntry(a.lastActivePeriod, now)
 				a.lastIdleTime = time.Now()
 			}
 			a.isSleeping = false
@@ -157,9 +181,21 @@ func (a *app) activityListener() {
 }
 
 func (a *app) idleTimeListener(ticker *time.Ticker) {
+	wentIdleFromSleep := false
+
 	for range ticker.C {
 		if a.isSleeping {
-			continue
+			if wentIdleFromSleep {
+				continue
+			} else {
+				idleTime := calculateDuration(a.sleepingSince, time.Now())
+				if idleTime > a.maxAllowedIdleTime {
+					a.addActivePeriodEntry(a.lastActivePeriod, a.sleepingSince)
+					a.isIdle = true
+				}
+
+				wentIdleFromSleep = true
+			}
 		}
 
 		idleTime, err := idle.Get()
@@ -169,17 +205,22 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 		}
 
 		if idleTime > a.maxAllowedIdleTime {
+			if !a.isIdle {
+				a.addActivePeriodEntry(a.lastIdleTime, time.Now())
+
+				a.isIdle = true
+			}
+
 			a.lastIdleTime = time.Now()
-			a.isIdle = true
 		} else if a.isIdle {
-			a.addBreakEntry(a.lastActiveTime, time.Now())
+			a.addBreakEntry(a.lastActivePeriod, time.Now())
 
 			// Reset
 			a.lastIdleTime = time.Now()
-			a.lastActiveTime = time.Now()
+			a.lastActivePeriod = time.Now()
 			a.isIdle = false
 		} else {
-			a.lastActiveTime = time.Now().Add(-idleTime)
+			a.lastActivePeriod = time.Now().Add(-idleTime)
 		}
 
 		d := time.Since(a.lastIdleTime)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/getlantern/systray"
 	"github.com/hako/durafmt"
 )
 
@@ -38,58 +39,35 @@ func (p *period) string() string {
 	)
 }
 
-func (a *app) addBreakEntry(start, end time.Time) {
-	entry := period{
-		Start: start,
-		End:   end,
-	}
+func (a *app) readPeriodsFromStorage(key string) ([]period, error) {
+	var periods []period
+	err := a.defaults.Unmarshal(key, &periods)
 
-	// Avoid duplicate breaks.
-	length := len(a.breaks)
-	if length > 0 {
-		lastBreak := a.breaks[length-1]
-		if entry.Start.Truncate(time.Minute) == lastBreak.Start.Truncate(time.Minute) {
-			if entry.End.After(lastBreak.End) {
-				a.breaks[length-1] = entry
-			}
-		} else {
-			a.breaks = append(a.breaks, entry)
-		}
-	} else {
-		a.breaks = append(a.breaks, entry)
-	}
-
-	fmt.Println("----------")
-	fmt.Printf("New break added: start = %v, end =%v , duration = %v.\n", entry.Start, entry.End, entry.duration())
-	fmt.Printf("string: %v\n", entry.string())
-	fmt.Println("current time:", time.Now())
-	fmt.Println("----------")
-
-	a.updateBreakMenuItems()
-	a.saveBreaksToStorage()
+	return periods, err
 }
 
-func (a *app) updateBreakMenuItems() {
-	totalNewMenuItems := len(a.breaks) - len(a.breakMenuItems)
+func (a *app) savePeriodsToStorage(key string, periods []period) error {
+	return a.defaults.Marshal(key, periods)
+}
+
+func updatePeriodMenuItems(
+	periods []period,
+	periodsMenuItem *systray.MenuItem,
+	currentMenuItems []*systray.MenuItem,
+) []*systray.MenuItem {
+	menuItems := currentMenuItems
+
+	totalNewMenuItems := len(periods) - len(menuItems)
 	for i := 0; i < totalNewMenuItems; i++ {
-		item := a.mBreaks.AddSubMenuItem("", "")
+		item := periodsMenuItem.AddSubMenuItem("", "")
 		item.Disable()
-		a.breakMenuItems = append(a.breakMenuItems, item)
+		menuItems = append(menuItems, item)
 	}
 
-	length := len(a.breaks)
-	for index, entry := range a.breaks {
-		a.breakMenuItems[length-index-1].SetTitle(entry.string())
+	length := len(periods)
+	for index, entry := range periods {
+		menuItems[length-index-1].SetTitle(entry.string())
 	}
-}
 
-func (a *app) readBreaksFromStorage() ([]period, error) {
-	var breaks []period
-	err := a.defaults.Unmarshal(breaksKey, &breaks)
-
-	return breaks, err
-}
-
-func (a *app) saveBreaksToStorage() error {
-	return a.defaults.Marshal(breaksKey, a.breaks)
+	return menuItems
 }
