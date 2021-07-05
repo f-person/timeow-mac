@@ -18,11 +18,11 @@ type app struct {
 
 	defaults userdefaults.UserDefaults
 
-	isIdle           bool
-	isSleeping       bool
-	sleepingSince    time.Time
-	lastIdleTime     time.Time
-	lastActivePeriod time.Time
+	isIdle     bool
+	isSleeping bool
+
+	lastIdleTime   time.Time
+	lastActiveTime time.Time
 
 	notifier *notifier.Notifier
 	ticker   *time.Ticker
@@ -40,6 +40,8 @@ type app struct {
 }
 
 func main() {
+	fmt.Println("Started the app at", time.Now())
+
 	notifierInstance := notifier.GetInstance()
 	defaults := *userdefaults.Defaults()
 	app := app{
@@ -51,12 +53,12 @@ func main() {
 
 		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 
-		isIdle:           false,
-		isSleeping:       false,
-		lastIdleTime:     time.Now(),
-		lastActivePeriod: time.Now(),
-		notifier:         notifierInstance,
-		ticker:           time.NewTicker(idleListenerInterval),
+		isIdle:         false,
+		isSleeping:     false,
+		lastIdleTime:   time.Now(),
+		lastActiveTime: time.Now(),
+		notifier:       notifierInstance,
+		ticker:         time.NewTicker(idleListenerInterval),
 
 		idleTimeCh: make(chan time.Duration),
 		notifierCh: notifierInstance.Start(),
@@ -156,46 +158,40 @@ func (a *app) onSystrayReady() {
 }
 
 func (a *app) activityListener() {
-	for activity := range a.notifierCh {
+	for {
+		activity := <-a.notifierCh
 		fmt.Printf("(%v) new event: %v\n", time.Now(), activity.Type)
 		switch activity.Type {
 		case notifier.Sleep:
 			fmt.Println("Sleeping")
 			a.isSleeping = true
-			a.sleepingSince = time.Now()
 		case notifier.Awake:
 			now := time.Now()
-			totalIdleTime := calculateDuration(a.lastActivePeriod, now)
+			totalIdleTime := calculateDuration(a.lastActiveTime, now)
 
 			fmt.Println("##########")
-			fmt.Printf("totalIdleTime = %v, now = %v, lastActivePeriod = %v.\n", totalIdleTime, now, a.lastActivePeriod)
+			fmt.Printf("totalIdleTime = %v, now = %v, lastActiveTime = %v.\n", totalIdleTime, now, a.lastActiveTime)
 			fmt.Println("##########")
 
 			if totalIdleTime > a.maxAllowedIdleTime {
-				a.addBreakEntry(a.lastActivePeriod, now)
+				activePeriodsDuration := calculateDuration(a.lastIdleTime, a.lastActiveTime)
+				if activePeriodsDuration > time.Minute {
+					a.addActivePeriodEntry(a.lastIdleTime, a.lastActiveTime)
+				}
+
+				a.addBreakEntry(a.lastActiveTime, now)
 				a.lastIdleTime = time.Now()
 			}
+
 			a.isSleeping = false
 		}
 	}
 }
 
 func (a *app) idleTimeListener(ticker *time.Ticker) {
-	wentIdleFromSleep := false
-
 	for range ticker.C {
 		if a.isSleeping {
-			if wentIdleFromSleep {
-				continue
-			} else {
-				idleTime := calculateDuration(a.sleepingSince, time.Now())
-				if idleTime > a.maxAllowedIdleTime {
-					a.addActivePeriodEntry(a.lastActivePeriod, a.sleepingSince)
-					a.isIdle = true
-				}
-
-				wentIdleFromSleep = true
-			}
+			continue
 		}
 
 		idleTime, err := idle.Get()
@@ -213,14 +209,14 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 
 			a.lastIdleTime = time.Now()
 		} else if a.isIdle {
-			a.addBreakEntry(a.lastActivePeriod, time.Now())
+			a.addBreakEntry(a.lastActiveTime, time.Now())
 
 			// Reset
 			a.lastIdleTime = time.Now()
-			a.lastActivePeriod = time.Now()
+			a.lastActiveTime = time.Now()
 			a.isIdle = false
 		} else {
-			a.lastActivePeriod = time.Now().Add(-idleTime)
+			a.lastActiveTime = time.Now().Add(-idleTime)
 		}
 
 		d := time.Since(a.lastIdleTime)
