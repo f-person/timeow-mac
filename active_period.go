@@ -6,6 +6,10 @@ import (
 )
 
 func (a *app) addActivePeriodEntry(start, end time.Time) {
+	if calculateDuration(start, end) < minAllowedActiveTime {
+		return
+	}
+
 	entry := period{
 		Start: start,
 		End:   end,

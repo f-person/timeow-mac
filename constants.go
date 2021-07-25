@@ -6,6 +6,7 @@ const idleListenerInterval = time.Second
 const appLabel = "com.github.f-person.usage_time_menubar_app"
 const appName = "Usage Time Menu Bar App"
 const defaultMaxAllowedIdleTime time.Duration = time.Minute * 3
+const minAllowedActiveTime time.Duration = time.Minute
 
 // User Default keys
 const maxAllowedIdleTimeKey = "maxAllowedIdleTime"

@@ -174,10 +174,7 @@ func (a *app) activityListener() {
 			fmt.Println("##########")
 
 			if totalIdleTime > a.maxAllowedIdleTime {
-				activePeriodsDuration := calculateDuration(a.lastIdleTime, a.lastActiveTime)
-				if activePeriodsDuration > time.Minute {
-					a.addActivePeriodEntry(a.lastIdleTime, a.lastActiveTime)
-				}
+				a.addActivePeriodEntry(a.lastIdleTime, a.lastActiveTime)
 
 				a.addBreakEntry(a.lastActiveTime, now)
 				a.lastIdleTime = time.Now()
@@ -202,7 +199,7 @@ func (a *app) idleTimeListener(ticker *time.Ticker) {
 
 		if idleTime > a.maxAllowedIdleTime {
 			if !a.isIdle {
-				a.addActivePeriodEntry(a.lastIdleTime, time.Now())
+				a.addActivePeriodEntry(a.lastIdleTime, a.lastActiveTime)
 
 				a.isIdle = true
 			}
