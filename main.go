@@ -123,9 +123,9 @@ func (a *app) onSystrayReady() {
 	mGoIdleAfter := mPreferences.AddSubMenuItem("Reset after inactivity for", "")
 	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", a.startup.RunningAtStartup())
 
-	var mIdleTimes [len(idleTimes)]*systray.MenuItem
+	var mIdleTimes [len(idleTimeOptionsInSettings)]*systray.MenuItem
 	selectedIdleTimeIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
-	for index, minutes := range idleTimes {
+	for index, minutes := range idleTimeOptionsInSettings {
 		durationString := durafmt.Parse(time.Duration(minutes) * time.Minute).LimitFirstN(1).String()
 		mIdleTimes[index] = mGoIdleAfter.AddSubMenuItemCheckbox(durationString, "", index == selectedIdleTimeIndex)
 	}

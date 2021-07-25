@@ -13,7 +13,7 @@ func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) 
 	}
 	mIdleTimes[index].Check()
 
-	a.setMaxAllowedIdleTime(int(idleTimes[index]))
+	a.setMaxAllowedIdleTime(int(idleTimeOptionsInSettings[index]))
 }
 
 func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {

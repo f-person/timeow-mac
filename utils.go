@@ -6,7 +6,7 @@ import (
 
 func getIdleTimeIndexFromDuration(d time.Duration) int {
 	minutes := uint8(d.Minutes())
-	for index, value := range idleTimes {
+	for index, value := range idleTimeOptionsInSettings {
 		if value == minutes {
 			return index
 		}
