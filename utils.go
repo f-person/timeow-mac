@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-func getIdleTimeIndexFromDuration(d time.Duration) int {
-	minutes := uint8(d.Minutes())
-	for index, value := range idleTimeOptionsInSettings {
+func getMinutesSliceIndexFromDuration(d time.Duration, minutesSlice []uint32) int {
+	minutes := uint32(d.Minutes())
+	for index, value := range minutesSlice {
 		if value == minutes {
 			return index
 		}
@@ -18,6 +18,11 @@ func getIdleTimeIndexFromDuration(d time.Duration) int {
 func (a *app) setMaxAllowedIdleTime(minutes int) {
 	a.maxAllowedIdleTime = time.Duration(minutes) * time.Minute
 	a.defaults.SetInteger(maxAllowedIdleTimeKey, minutes)
+}
+
+func (a *app) setKeepTimeLogsFor(minutes int) {
+	a.keepTimeLogsFor = time.Duration(minutes) * time.Minute
+	a.defaults.SetInteger(keepTimeLogsForKey, minutes)
 }
 
 // This function exists because time.Sub behaves strangely after the machine wakes up from sleep.

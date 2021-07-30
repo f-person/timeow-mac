@@ -7,13 +7,23 @@ import (
 )
 
 func (a *app) handleIdleItemSelected(mIdleTimes []*systray.MenuItem, index int) {
-	prevIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
+	prevIndex := getMinutesSliceIndexFromDuration(a.maxAllowedIdleTime, idleTimeOptionsInSettings[:])
 	if prevIndex >= 0 && prevIndex < len(mIdleTimes) {
 		mIdleTimes[prevIndex].Uncheck()
 	}
 	mIdleTimes[index].Check()
 
 	a.setMaxAllowedIdleTime(int(idleTimeOptionsInSettings[index]))
+}
+
+func (a *app) handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions []*systray.MenuItem, index int) {
+	prevIndex := getMinutesSliceIndexFromDuration(a.keepTimeLogsFor, keepTimeLogsForOptionsInSettings[:])
+	if prevIndex >= 0 && prevIndex < len(mKeepTimeLogsForOptions) {
+		mKeepTimeLogsForOptions[prevIndex].Uncheck()
+	}
+	mKeepTimeLogsForOptions[index].Check()
+
+	a.setKeepTimeLogsFor(int(keepTimeLogsForOptionsInSettings[index]))
 }
 
 func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {

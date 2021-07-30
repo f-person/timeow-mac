@@ -14,8 +14,9 @@ import (
 
 type app struct {
 	maxAllowedIdleTime time.Duration
-	startup            startup.Startup
+	keepTimeLogsFor    time.Duration
 
+	startup  startup.Startup
 	defaults userdefaults.UserDefaults
 
 	isIdle     bool
@@ -45,13 +46,14 @@ func main() {
 	notifierInstance := notifier.GetInstance()
 	defaults := *userdefaults.Defaults()
 	app := app{
+		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
+		keepTimeLogsFor:    time.Minute * time.Duration(defaults.Integer(keepTimeLogsForKey)),
+
 		defaults: defaults,
 		startup: startup.Startup{
 			AppLabel: appLabel,
 			AppName:  appName,
 		},
-
-		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 
 		isIdle:         false,
 		isSleeping:     false,
@@ -67,7 +69,11 @@ func main() {
 	// [maxAllowedIdleTime] have never been set before,
 	// use the default value and save it to user defaults.
 	if app.maxAllowedIdleTime == 0 {
-		app.setMaxAllowedIdleTime(int(defaultMaxAllowedIdleTime))
+		app.setMaxAllowedIdleTime(int(defaultMaxAllowedIdleTime.Minutes()))
+	}
+
+	if app.keepTimeLogsFor == 0 {
+		app.setKeepTimeLogsFor(int(defaultKeepTimeLogsFor.Minutes()))
 	}
 
 	breaks, err := app.readPeriodsFromStorage(breaksKey)
@@ -121,23 +127,47 @@ func (a *app) onSystrayReady() {
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
 	mGoIdleAfter := mPreferences.AddSubMenuItem("Reset after inactivity for", "")
+	mKeepTimeLogsFor := mPreferences.AddSubMenuItem("Keep time logs for", "")
 	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", a.startup.RunningAtStartup())
 
-	var mIdleTimes [len(idleTimeOptionsInSettings)]*systray.MenuItem
-	selectedIdleTimeIndex := getIdleTimeIndexFromDuration(a.maxAllowedIdleTime)
-	for index, minutes := range idleTimeOptionsInSettings {
-		durationString := durafmt.Parse(time.Duration(minutes) * time.Minute).LimitFirstN(1).String()
-		mIdleTimes[index] = mGoIdleAfter.AddSubMenuItemCheckbox(durationString, "", index == selectedIdleTimeIndex)
+	createMinutesSelectionItems := func(
+		menuItem *systray.MenuItem,
+		selectedItem time.Duration,
+		optionsInSettings []uint32,
+	) (
+		itemSelected chan int, menuItems []*systray.MenuItem,
+	) {
+		selectedItemIndex := getMinutesSliceIndexFromDuration(selectedItem, optionsInSettings[:])
+		for index, minutes := range optionsInSettings {
+			durationString := durafmt.Parse(time.Duration(minutes) * time.Minute).LimitFirstN(1).String()
+			menuItems = append(
+				menuItems,
+				menuItem.AddSubMenuItemCheckbox(durationString, "", index == selectedItemIndex),
+			)
+		}
+
+		itemSelected = make(chan int)
+		for i, mItem := range menuItems {
+			go func(c chan struct{}, index int) {
+				for range c {
+					itemSelected <- index
+				}
+			}(mItem.ClickedCh, i)
+		}
+
+		return itemSelected, menuItems
 	}
 
-	idleTimeSelected := make(chan int)
-	for i, mIdleTime := range mIdleTimes {
-		go func(c chan struct{}, index int) {
-			for range c {
-				idleTimeSelected <- index
-			}
-		}(mIdleTime.ClickedCh, i)
-	}
+	idleTimeSelected, mIdleTimes := createMinutesSelectionItems(
+		mGoIdleAfter,
+		a.maxAllowedIdleTime,
+		idleTimeOptionsInSettings[:],
+	)
+	keepTimeLogsForSelected, mKeepTimeLogsForOptions := createMinutesSelectionItems(
+		mKeepTimeLogsFor,
+		a.keepTimeLogsFor,
+		keepTimeLogsForOptionsInSettings[:],
+	)
 
 	systray.AddSeparator()
 
@@ -151,7 +181,9 @@ func (a *app) onSystrayReady() {
 			case <-mOpenAtLogin.ClickedCh:
 				a.handleOpenAtLoginClicked(mOpenAtLogin)
 			case index := <-idleTimeSelected:
-				a.handleIdleItemSelected(mIdleTimes[:], index)
+				a.handleIdleItemSelected(mIdleTimes, index)
+			case index := <-keepTimeLogsForSelected:
+				a.handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions, index)
 			}
 		}
 	}()
