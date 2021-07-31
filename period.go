@@ -58,10 +58,21 @@ func updatePeriodMenuItems(
 	menuItems := currentMenuItems
 
 	totalNewMenuItems := len(periods) - len(menuItems)
-	for i := 0; i < totalNewMenuItems; i++ {
-		item := periodsMenuItem.AddSubMenuItem("", "")
-		item.Disable()
-		menuItems = append(menuItems, item)
+	fmt.Printf("totalNewMenuItems: %v", totalNewMenuItems)
+
+	if totalNewMenuItems < 0 {
+		// Hide redundant menu items.
+		for i := len(menuItems) - 1; i >= len(menuItems)-(-totalNewMenuItems); i-- {
+			menuItems[i].Hide()
+		}
+	} else {
+		// Add missing menu items.
+		for i := 0; i < totalNewMenuItems; i++ {
+			item := periodsMenuItem.AddSubMenuItem("", "")
+			item.Disable()
+			item.Show()
+			menuItems = append(menuItems, item)
+		}
 	}
 
 	length := len(periods)

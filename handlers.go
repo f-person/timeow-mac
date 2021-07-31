@@ -24,6 +24,8 @@ func (a *app) handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions []*sys
 	mKeepTimeLogsForOptions[index].Check()
 
 	a.setKeepTimeLogsFor(int(keepTimeLogsForOptionsInSettings[index]))
+
+	a.checkAndCleanExpiredTimeLogs()
 }
 
 func (a *app) handleOpenAtLoginClicked(item *systray.MenuItem) {
