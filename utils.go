@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os/exec"
 	"time"
 )
 
@@ -31,4 +32,9 @@ func calculateDuration(start, end time.Time) time.Duration {
 	endSeconds := end.Local().Unix()
 
 	return time.Second * time.Duration(endSeconds-startSeconds)
+}
+
+// opens [url] using the `open` command
+func openURL(url string) error {
+	return exec.Command("open", url).Start()
 }

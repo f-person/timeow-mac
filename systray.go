@@ -10,6 +10,14 @@ import (
 func (a *app) onSystrayReady() {
 	systray.SetTitle("0m")
 
+	var getProClickedCh chan struct{}
+
+	if !a.isPro {
+		mGetPro := systray.AddMenuItem("⭐️ Get TimeLog Pro", "")
+		getProClickedCh = mGetPro.ClickedCh
+		systray.AddSeparator()
+	}
+
 	// Setup break entries
 	mBreaks := systray.AddMenuItem("Breaks", "")
 	mNoBreaks := mBreaks.AddSubMenuItem("No breaks yet", "")
@@ -83,14 +91,16 @@ func (a *app) onSystrayReady() {
 	go func() {
 		for {
 			select {
-			case <-mQuit.ClickedCh:
-				a.handleQuitClicked()
-			case <-mOpenAtLogin.ClickedCh:
-				a.handleOpenAtLoginClicked(mOpenAtLogin)
+			case <-getProClickedCh:
+				openURL(getProURL)
 			case index := <-idleTimeSelected:
 				a.handleIdleItemSelected(mIdleTimes, index)
 			case index := <-keepTimeLogsForSelected:
 				a.handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions, index)
+			case <-mOpenAtLogin.ClickedCh:
+				a.handleOpenAtLoginClicked(mOpenAtLogin)
+			case <-mQuit.ClickedCh:
+				a.handleQuitClicked()
 			}
 		}
 	}()

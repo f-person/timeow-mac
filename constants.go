@@ -34,3 +34,5 @@ var keepTimeLogsForOptionsInSettings = [...]uint32{
 	7 * dayInMinutes,
 	30 * dayInMinutes,
 }
+
+const getProURL = "https://github.com/f-person"
