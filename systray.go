@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -13,7 +14,7 @@ func (a *app) onSystrayReady() {
 	var getProClickedCh chan struct{}
 
 	if !a.isPro {
-		mGetPro := systray.AddMenuItem("⭐️ Get TimeLog Pro", "")
+		mGetPro := systray.AddMenuItem(fmt.Sprintf("⭐️ Get %s Pro", appName), "")
 		getProClickedCh = mGetPro.ClickedCh
 		systray.AddSeparator()
 	}
@@ -86,7 +87,7 @@ func (a *app) onSystrayReady() {
 
 	systray.AddSeparator()
 
-	mQuit := systray.AddMenuItem("Quit", "")
+	mQuit := systray.AddMenuItem(fmt.Sprintf("Quit %s", appName), "")
 
 	go func() {
 		for {

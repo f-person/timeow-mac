@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/f-person/usage_time_menubar_app/pkg/startup"
-	"github.com/f-person/usage_time_menubar_app/pkg/userdefaults"
+	"github.com/f-person/timeow-mac/pkg/startup"
+	"github.com/f-person/timeow-mac/pkg/userdefaults"
 	"github.com/getlantern/systray"
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 )

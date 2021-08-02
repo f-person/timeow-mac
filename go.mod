@@ -1,4 +1,4 @@
-module github.com/f-person/usage_time_menubar_app
+module github.com/f-person/timeow-mac
 
 go 1.16
 
