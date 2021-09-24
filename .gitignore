@@ -2,3 +2,5 @@
 timeow-mac
 .vscode
 .DS_Store
+dist/
+build/
