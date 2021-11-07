@@ -87,6 +87,7 @@ func (a *app) onSystrayReady() {
 
 	systray.AddSeparator()
 
+	mAbout := systray.AddMenuItem(fmt.Sprintf("About %s", appName), "")
 	mQuit := systray.AddMenuItem(fmt.Sprintf("Quit %s", appName), "")
 
 	go func() {
@@ -100,6 +101,8 @@ func (a *app) onSystrayReady() {
 				a.handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions, index)
 			case <-mOpenAtLogin.ClickedCh:
 				a.handleOpenAtLoginClicked(mOpenAtLogin)
+			case <-mAbout.ClickedCh:
+				a.handleAboutClicked()
 			case <-mQuit.ClickedCh:
 				a.handleQuitClicked()
 			}

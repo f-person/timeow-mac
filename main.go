@@ -46,7 +46,7 @@ func main() {
 	notifierInstance := notifier.GetInstance()
 	defaults := *userdefaults.Defaults()
 	app := app{
-		isPro: false,
+		isPro: true,
 
 		maxAllowedIdleTime: time.Minute * time.Duration(defaults.Integer(maxAllowedIdleTimeKey)),
 		keepTimeLogsFor:    time.Minute * time.Duration(defaults.Integer(keepTimeLogsForKey)),

@@ -43,3 +43,7 @@ func (a *app) handleQuitClicked() {
 
 	systray.Quit()
 }
+
+func (a *app) handleAboutClicked() {
+	openURL(aboutURL)
+}
