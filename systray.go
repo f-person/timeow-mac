@@ -102,6 +102,7 @@ func (a *app) onSystrayReady() {
 			case <-mOpenAtLogin.ClickedCh:
 				a.handleOpenAtLoginClicked(mOpenAtLogin)
 			case <-mAbout.ClickedCh:
+				a.addAnalyticsEvent("aboutClicked")
 				a.handleAboutClicked()
 			case <-mQuit.ClickedCh:
 				a.handleQuitClicked()
