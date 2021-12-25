@@ -9,3 +9,5 @@ copy-binary-to-mac:
 	cp build/timeow-mac build/Timeow.app/Contents/MacOS/Timeow
 
 dist-mac: build build-mac-app copy-binary-to-mac
+
+.PHONY: build
