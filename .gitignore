@@ -4,3 +4,4 @@ timeow-mac
 .DS_Store
 dist/
 build/
+.ccls-cache/

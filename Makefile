@@ -1,8 +1,11 @@
 clean:
+	go clean
 	rm -rf build/
 
 build:
-	go build -o build/timeow-mac
+	GOOS=darwin GOARCH=arm64 go build -o build/timeow-mac_arm64
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o build/timeow-mac_amd64
+	lipo -create -output build/timeow-mac build/timeow-mac_amd64 build/timeow-mac_arm64
 
 build-mac-app:
 	mkdir -p build/app
