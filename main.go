@@ -8,8 +8,6 @@ import (
 	"github.com/f-person/timeow-mac/pkg/userdefaults"
 	"github.com/getlantern/systray"
 
-	ga "github.com/f-person/timeow-mac/pkg/ga"
-
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 )
 
@@ -41,8 +39,6 @@ type app struct {
 	activePeriods         []period
 	mActivePeriods        *systray.MenuItem
 	activePeriodMenuItems []*systray.MenuItem
-
-	analytics *ga.Client
 }
 
 func main() {
@@ -75,14 +71,6 @@ func main() {
 		idleTimeCh: make(chan time.Duration),
 		notifierCh: notifierInstance.Start(),
 	}
-
-	client, err := ga.NewClient(analyticsTrackingID)
-	if err != nil {
-		fmt.Printf("Error occurred when initializing Google Analytics: %v\n", err)
-	}
-	client.UserAgentOverride(analyticsUserAgent)
-
-	app.analytics = client
 
 	// [maxAllowedIdleTime] have never been set before,
 	// use the default value and save it to user defaults.

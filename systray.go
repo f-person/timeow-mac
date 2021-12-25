@@ -14,7 +14,10 @@ func (a *app) onSystrayReady() {
 	var getProClickedCh chan struct{}
 
 	if !a.isPro {
-		mGetPro := systray.AddMenuItem(fmt.Sprintf("⭐️ Get %s Pro", appName), "")
+		mGetPro := systray.AddMenuItem(
+			fmt.Sprintf("⭐️ Get %s Pro", appName),
+			"",
+		)
 		getProClickedCh = mGetPro.ClickedCh
 		systray.AddSeparator()
 	}
@@ -32,7 +35,10 @@ func (a *app) onSystrayReady() {
 
 	// Setup active time entries
 	mActivePeriods := systray.AddMenuItem("Active periods", "")
-	mNoActivePeriods := mActivePeriods.AddSubMenuItem("No active periods yet", "")
+	mNoActivePeriods := mActivePeriods.AddSubMenuItem(
+		"No active periods yet",
+		"",
+	)
 	mNoActivePeriods.Disable()
 
 	a.mActivePeriods = mActivePeriods
@@ -42,9 +48,16 @@ func (a *app) onSystrayReady() {
 	}
 
 	mPreferences := systray.AddMenuItem("Preferences", "")
-	mGoIdleAfter := mPreferences.AddSubMenuItem("Reset after inactivity for", "")
+	mGoIdleAfter := mPreferences.AddSubMenuItem(
+		"Reset after inactivity for",
+		"",
+	)
 	mKeepTimeLogsFor := mPreferences.AddSubMenuItem("Keep time logs for", "")
-	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox("Start at Login", "", a.startup.RunningAtStartup())
+	mOpenAtLogin := mPreferences.AddSubMenuItemCheckbox(
+		"Start at Login",
+		"",
+		a.startup.RunningAtStartup(),
+	)
 
 	createMinutesSelectionItems := func(
 		menuItem *systray.MenuItem,
@@ -53,12 +66,21 @@ func (a *app) onSystrayReady() {
 	) (
 		itemSelected chan int, menuItems []*systray.MenuItem,
 	) {
-		selectedItemIndex := getMinutesSliceIndexFromDuration(selectedItem, optionsInSettings[:])
+		selectedItemIndex := getMinutesSliceIndexFromDuration(
+			selectedItem,
+			optionsInSettings[:],
+		)
 		for index, minutes := range optionsInSettings {
-			durationString := durafmt.Parse(time.Duration(minutes) * time.Minute).LimitFirstN(1).String()
+			durationString := durafmt.Parse(time.Duration(minutes) * time.Minute).
+				LimitFirstN(1).
+				String()
 			menuItems = append(
 				menuItems,
-				menuItem.AddSubMenuItemCheckbox(durationString, "", index == selectedItemIndex),
+				menuItem.AddSubMenuItemCheckbox(
+					durationString,
+					"",
+					index == selectedItemIndex,
+				),
 			)
 		}
 
@@ -98,11 +120,13 @@ func (a *app) onSystrayReady() {
 			case index := <-idleTimeSelected:
 				a.handleIdleItemSelected(mIdleTimes, index)
 			case index := <-keepTimeLogsForSelected:
-				a.handleKeepTimeLogsForOptionSelected(mKeepTimeLogsForOptions, index)
+				a.handleKeepTimeLogsForOptionSelected(
+					mKeepTimeLogsForOptions,
+					index,
+				)
 			case <-mOpenAtLogin.ClickedCh:
 				a.handleOpenAtLoginClicked(mOpenAtLogin)
 			case <-mAbout.ClickedCh:
-				a.addAnalyticsEvent("aboutClicked")
 				a.handleAboutClicked()
 			case <-mQuit.ClickedCh:
 				a.handleQuitClicked()

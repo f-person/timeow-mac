@@ -39,7 +39,3 @@ var keepTimeLogsForOptionsInSettings = [...]uint32{
 
 const getProURL = "https://github.com/f-person"
 const aboutURL = "https://timeow.com/?ref=about-button"
-
-const analyticsTrackingID = "G-KZ9QNZZ18G"
-const analyticsUserAgent = appName + "(" + appLabel + ")"
-const analyticsCategory = "Menu Bar"
