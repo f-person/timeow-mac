@@ -42,3 +42,14 @@ If you want to build a dmg, you need a macOS machine with Go, Xcode and
 ```sh
 make dist-mac-dmg
 ```
+
+--- 
+
+Kudos to
+[systray](https://github.com/getlantern/systray),
+[menuet](https://github.com/caseymrm/menuet),
+[mac-sleep-notifier](https://github.com/prashantgupta24/mac-sleep-notifier),
+[idle](https://github.com/lextoumbourou/idle)
+and
+[durafmt](https://github.com/hako/durafmt)
+package authors and contributors for making this possible.
